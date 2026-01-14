@@ -1,0 +1,39 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$SHORT_SHA', '.']
+  
+  # Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$SHORT_SHA']
+  
+  # Deploy the Cloud Function using the container image
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'functions'
+      - 'deploy'
+      - '${_FUNCTION_NAME}'
+      - '--gen2'
+      - '--region=${_REGION}'
+      - '--docker-image=gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$SHORT_SHA'
+      - '--trigger-http'
+      - '--allow-unauthenticated'
+      - '--memory=256MB'
+      - '--timeout=60s'
+      - '--max-instances=10'
+
+# Substitution variables (set these in Cloud Build triggers or in the UI)
+substitutions:
+  _SERVICE_NAME: 'cloud-function'
+  _FUNCTION_NAME: 'hello-world-function'
+  _REGION: 'us-central1'
+
+# Images to be pushed to the registry
+images:
+  - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$SHORT_SHA'
+
+# Options
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
